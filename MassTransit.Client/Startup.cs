@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using MassTransit.Util;
 using Common.Messages;
+using Microsoft.AspNetCore.HttpOverrides;
 
 namespace MassTransit.Client
 {
@@ -24,7 +25,11 @@ namespace MassTransit.Client
 
             var bus = Bus.Factory.CreateUsingRabbitMq(cfg =>
             {
-                var host = cfg.Host(new Uri("rabbitmq://localhost/"), h => { });
+                var host = cfg.Host(new Uri("rabbitmq://192.168.1.105/"), h =>
+                {
+                    h.Username("admin");
+                    h.Password("a");
+                });
             });
 
             services.AddSingleton<IPublishEndpoint>(bus);
@@ -32,7 +37,7 @@ namespace MassTransit.Client
             services.AddSingleton<IBus>(bus);
 
             var timeout = TimeSpan.FromSeconds(10);
-            var serviceAddress = new Uri("rabbitmq://localhost/demo");
+            var serviceAddress = new Uri("rabbitmq://192.168.1.105/demo");
 
             services.AddScoped<IRequestClient<requestMessage, ReplyMessage>>(x =>
                new MessageRequestClient<requestMessage, ReplyMessage>(x.GetRequiredService<IBus>(), serviceAddress, timeout, TimeSpan.FromSeconds(2000)));
@@ -48,6 +53,11 @@ namespace MassTransit.Client
             {
                 app.UseDeveloperExceptionPage();
             }
+
+            app.UseForwardedHeaders(new ForwardedHeadersOptions
+            {
+                ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+            });
 
             app.UseMvc();
         }
